@@ -107,15 +107,18 @@ a1x-rgb/
 │       ├── color.py       # hsb_to_rgb (ported from HHD)
 │       ├── modes.py       # mode/capability definitions + validation
 │       ├── device.py      # LedDevice ABC + detect_device()
-│       └── oxp_hid_v2.py  # hidraw discovery + packet builders + apply()
+│       ├── hidraw.py      # generic sysfs hidraw discovery (VID/PID + usage)
+│       └── oxp_hid_v2.py  # packet builders, mode sequences, find_device()
 ├── src/
 │   ├── index.tsx          # definePlugin, lifecycle hooks
 │   ├── backend.ts         # typed callable() wrappers
 │   └── components/
 │       └── LedPanel.tsx   # mode dropdown + dynamic controls
 ├── tests/
+│   ├── _util.py           # loads reference functions from a local HHD checkout
 │   ├── test_packets.py    # byte-exact packet tests
-│   └── test_color.py
+│   ├── test_color.py
+│   └── test_hidraw.py     # discovery against a fake sysfs tree
 └── README.md
 ```
 

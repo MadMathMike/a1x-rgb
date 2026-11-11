@@ -23,6 +23,10 @@ The frontend bundle is written to `dist/index.js`.
 python3 -m unittest discover -s tests -v
 ```
 
+If a Handheld Daemon checkout is at `../hhd` (or `HHD_SRC` points at its
+`src/hhd` directory), the tests also compare our packets and colours
+byte-for-byte against HHD's own code. Otherwise those tests are skipped.
+
 ## Layout
 
 | Path | Purpose |
