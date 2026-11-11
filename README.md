@@ -3,8 +3,19 @@
 A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin for
 controlling the LEDs on the AOKZOE A1X. See [PLAN.md](PLAN.md) for the design.
 
-**Status:** scaffold only — the panel loads and talks to the backend, but no LED
-control yet.
+**Status:** backend done (milestone 3). The panel shows the detected device;
+the mode controls arrive in milestone 4.
+
+## Package
+
+```sh
+./scripts/package.sh
+```
+
+This builds the frontend, runs the tests and writes `out/a1x-rgb.zip`. Install
+it on the handheld with Decky → Settings → Developer → *Install Plugin from
+ZIP File*. The script uses a local `pnpm` if there is one, otherwise a
+throwaway Node container (podman or docker).
 
 ## Build
 

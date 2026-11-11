@@ -4,6 +4,8 @@ Kept behaviourally identical to HHD so a given hue/saturation/brightness
 produces exactly the same RGB bytes on the LEDs.
 """
 
+from __future__ import annotations
+
 
 def hsb_to_rgb(h: float, s: float, v: float) -> tuple[int, int, int]:
     """Convert hue (0-360), saturation (0-100) and brightness (0-100) to RGB.

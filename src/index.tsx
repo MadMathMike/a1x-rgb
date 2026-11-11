@@ -5,6 +5,8 @@ import { FaLightbulb } from "react-icons/fa";
 
 import { getState, PluginState } from "./backend";
 
+const small = { fontSize: "0.8em", opacity: 0.6 };
+
 function Content() {
   const [state, setState] = useState<PluginState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,17 +21,30 @@ function Content() {
   if (error) status = `Backend error: ${error}`;
   else if (!state) status = "Loading…";
   else if (!state.device) status = "AOKZOE A1X LED controller not found";
-  else status = `Device: ${state.device}`;
+  else status = state.device.name;
+
+  // Temporary: the mode and its controls arrive in milestone 4.
+  const mode = state?.settings
+    ? state.description?.modes.find((m) => m.key === state.settings!.mode)?.label
+    : undefined;
 
   return (
     <PanelSection title="LEDs">
       <PanelSectionRow>
         <div>{status}</div>
       </PanelSectionRow>
+      {state?.device && (
+        <PanelSectionRow>
+          <div style={small}>
+            {state.device.path}
+            {mode && ` · saved mode: ${mode}`}
+          </div>
+        </PanelSectionRow>
+      )}
       {state && (
         <PanelSectionRow>
-          <div style={{ fontSize: "0.8em", opacity: 0.6 }}>
-            v{state.version}
+          <div style={small}>
+            v{state.version} · Python {state.python}
           </div>
         </PanelSectionRow>
       )}

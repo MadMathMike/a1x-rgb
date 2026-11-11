@@ -7,6 +7,8 @@ Packets are pure byte strings; writing them to the device (with WRITE_DELAY
 between packets) is handled by the device layer.
 """
 
+from __future__ import annotations
+
 from typing import Literal
 
 from .hidraw import find_hidraw

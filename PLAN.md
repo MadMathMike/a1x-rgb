@@ -120,8 +120,10 @@ a1x-rgb/
 │   └── a1x_rgb/
 │       ├── __init__.py
 │       ├── color.py       # hsb_to_rgb (ported from HHD)
-│       ├── modes.py       # mode/capability definitions + validation
-│       ├── device.py      # LedDevice ABC + detect_device()
+│       ├── modes.py       # mode/capability description helpers + validation
+│       ├── settings.py    # load/save settings.json (atomic)
+│       ├── controller.py  # Controller (state, set_settings) + latest-wins Applier
+│       ├── device.py      # LedDevice ABC, OxpHidV2Device + its modes, detect_device()
 │       ├── hidraw.py      # generic sysfs hidraw discovery (VID/PID + usage)
 │       └── oxp_hid_v2.py  # packet builders, mode sequences, find_device()
 ├── src/
@@ -169,8 +171,8 @@ Start from the official `SteamDeckHomebrew/decky-plugin-template` so the build,
 - **Callable methods** (exposed to the frontend):
   | Method | Purpose |
   |---|---|
-  | `get_state()` | `{device: name\|null, modes, settings}` |
-  | `set_settings(settings)` | validate → persist → apply (coalesced) |
+  | `get_state()` | `{version, python, device: {name, path}\|null, description, settings}`. Looks for the device again if it wasn't found yet |
+  | `set_settings(partial)` | merge with saved → validate (strict) → save → apply (coalesced). Returns `{ok, error, settings}` |
 - **Lifecycle:** `_main()` loads settings and detects the device. It doesn't
   write to the LEDs. `_unload()` does nothing (the LEDs keep their last state).
 - The saved settings are what the panel shows. If something else changes the
@@ -233,7 +235,7 @@ With the plugin installed:
 
 1. ✅ **Scaffold:** clone the Decky template, rename, set `flags: ["root"]`, build an empty panel.
 2. ✅ **Protocol module + unit tests:** `color.py`, `oxp_hid_v2.py` packet builders, discovery.
-3. **Backend:** settings persistence, `LedDevice`, coalesced apply, callables.
+3. ✅ **Backend:** settings persistence, `LedDevice`, coalesced apply, callables.
 4. **Frontend:** mode dropdown, dynamic controls, debounce, colour swatch, not-found state.
 5. **On-device testing** (checklist in §5), then write the README with install steps.
 
