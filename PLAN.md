@@ -2,7 +2,7 @@
 
 A small Decky Loader plugin that controls the LEDs on the
 **AOKZOE A1X**. It supports the same lighting modes Handheld Daemon (HHD) offers
-for this device, and nothing more. The UI and lifecycle borrow from
+for this device, and nothing more. The UI borrows from
 [HueSync](https://github.com/honjow/HueSync), with far fewer features.
 
 ---
@@ -17,7 +17,10 @@ for this device, and nothing more. The UI and lifecycle borrow from
   | **Off** | — |
   | **Solid** | Hue (0–360), Saturation (0–100 %), Brightness (0–100 %) |
   | **AOKZOE** (built-in firmware effects) | Style (10 presets), Brightness (Low / Medium / High) |
-- Save the settings, and re-apply them when the plugin loads and after resume from suspend.
+- Save the settings so the panel shows the last choice. The LEDs are only
+  written when the user changes something. The A1X firmware keeps the LED
+  state across suspend and reboot (§2.4), so nothing is re-applied on plugin
+  load or resume.
 - A single global setting. No per-game profiles.
 
 **Out of scope** (HueSync has these; we skip them): per-app profiles, AC-state
@@ -52,6 +55,11 @@ Sources: `hhd/src/hhd/device/oxp/{const.py,base.py,hid_v2.py}`,
   2. Then reading `.../device/report_descriptor` and picking the node whose
      descriptor declares usage page `0xFF01` (bytes `06 01 FF`) with usage
      `0x0001` (`09 01`).
+- **Verified on the A1X (2026-11-11):** two hidraw nodes have ID `1A2C:B001`.
+  `hidraw0` is the LED interface (descriptor starts `06 01 ff 09 01 a1 01`).
+  `hidraw2` is a mouse interface (`05 01 09 02 …`), which discovery rejects.
+  The nodes are `root:root 0600`, so the `root` flag is needed. The start of
+  both descriptors is a regression test in `test_hidraw.py`.
 
 ### 2.2 Packet format
 Every command is exactly **64 bytes**: `[cid, 0xFF, *payload]`, zero-padded.
@@ -86,9 +94,16 @@ Firmware effect codes (style → code), from `gen_rgb_mode` in `hid_v2.py`:
 | AOKZOE | `brightness(1, level)` → `effect(code)` |
 
 - Leave **≥ 50 ms** between writes (`WRITE_DELAY` in HHD), and send brightness before colour/effect.
-- HHD waits **4 s** after opening the device before its first write (`INIT_DELAY`).
-  We follow that on plugin load and on resume.
+- HHD waits 4 s after opening the device before its first write (`INIT_DELAY`).
+  We don't need that because we never write at startup or resume.
 - Responses on the device (`cid 0xB8`) can be ignored. We only write, never read.
+
+### 2.4 Verified on the A1X (2026-11-11, hand-written packets)
+- Solid red/blue, AOK Classic at medium, Aurora at low, and Off all worked.
+  The brightness level was visibly different between low and medium.
+- Rumble still worked after LED writes (tested from Steam).
+- **The LED state survives suspend/resume, restart, and shutdown + power on.**
+  The firmware keeps it, so the plugin doesn't re-apply anything.
 
 ---
 
@@ -110,7 +125,7 @@ a1x-rgb/
 │       ├── hidraw.py      # generic sysfs hidraw discovery (VID/PID + usage)
 │       └── oxp_hid_v2.py  # packet builders, mode sequences, find_device()
 ├── src/
-│   ├── index.tsx          # definePlugin, lifecycle hooks
+│   ├── index.tsx          # definePlugin
 │   ├── backend.ts         # typed callable() wrappers
 │   └── components/
 │       └── LedPanel.tsx   # mode dropdown + dynamic controls
@@ -156,9 +171,11 @@ Start from the official `SteamDeckHomebrew/decky-plugin-template` so the build,
   |---|---|
   | `get_state()` | `{device: name\|null, modes, settings}` |
   | `set_settings(settings)` | validate → persist → apply (coalesced) |
-  | `reapply(delay_s=0)` | re-send current settings (used on resume) |
-- **Lifecycle:** `_main()` loads settings, detects the device, waits 4 s, then
-  applies. `_unload()` does nothing (the LEDs keep their last state).
+- **Lifecycle:** `_main()` loads settings and detects the device. It doesn't
+  write to the LEDs. `_unload()` does nothing (the LEDs keep their last state).
+- The saved settings are what the panel shows. If something else changes the
+  LEDs, the panel can be out of date until the user changes a setting. That's
+  accepted (see §4).
 
 ### 3.2 Frontend (TypeScript / React)
 - `definePlugin` with a `PanelSection` titled "A1X RGB" and a lightbulb icon.
@@ -174,16 +191,17 @@ Start from the official `SteamDeckHomebrew/decky-plugin-template` so the build,
 - Every change updates local state straight away, then calls `set_settings`
   **debounced ~150 ms**.
 - If `device` is null: show "AOKZOE A1X LED controller not found" and hide the controls.
-- **Resume:** register `SteamClient.System.RegisterForOnResumeFromSuspend` at
-  plugin init (not panel mount), and call `reapply(delay_s=4)`. HueSync waits
-  5 s, then re-applies. Unregister in `onDismount`.
+- No suspend/resume hooks (unlike HueSync), because the firmware keeps the LED state.
 
 ---
 
-## 4. Handheld Daemon
+## 4. Other software on the device
 
-HHD won't be installed on the target device. It's used only as the reference
-for the protocol, so the plugin doesn't detect or handle HHD at all.
+- **Handheld Daemon:** won't be installed on the target device. It's used only
+  as the reference for the protocol, so the plugin doesn't detect or handle HHD.
+- **InputPlumber:** `inputplumber.service` is running on the target device.
+  Possible conflicts over the LEDs are **ignored for now**. The plugin doesn't
+  detect or work around it.
 
 ---
 
@@ -199,28 +217,28 @@ for the protocol, so the plugin doesn't detect or handle HHD at all.
   sample `uevent`/`report_descriptor` files.
 
 **On the A1X** (this dev machine is a desktop, so final checks have to run on the handheld):
-1. Before installing the plugin, confirm the node:
-   `grep -l 1A2C /sys/class/hidraw/*/device/uevent`.
-2. Install with `decky plugin build` / CLI deploy.
-3. Go through each mode, each of the 10 styles, and each brightness level.
-4. Drag the hue slider fast: the LEDs should keep up without freezing.
-5. Suspend/resume: the settings should come back.
-6. Reboot: the settings should come back on plugin load.
-7. **Rumble check:** HHD's comments say setting RGB can break rumble on this
-   family of devices. Test controller vibration after applying LEDs. If it
-   breaks, look into it (for example, don't re-send unchanged commands at
-   startup, which is what HHD does).
+Already done with hand-written packets (§2.1, §2.4): finding the node, solid
+colours, two effects, off, brightness levels, rumble, suspend and reboot.
+With the plugin installed:
+1. The panel shows the detected device (`/dev/hidraw0`).
+2. Go through each mode, each of the 10 styles, and each brightness level.
+3. Drag the hue slider fast: the LEDs should keep up without freezing.
+4. Suspend/resume and reboot: the LEDs keep their state, and the panel still
+   shows the saved settings.
+5. Rumble still works after changing LEDs from the panel.
 
 ---
 
 ## 6. Milestones
 
-1. **Scaffold:** clone the Decky template, rename, set `flags: ["root"]`, build an empty panel.
-2. **Protocol module + unit tests:** `color.py`, `oxp_hid_v2.py` packet builders, discovery.
-3. **Backend:** settings persistence, `LedDevice`, coalesced apply, callables, startup apply.
+1. ✅ **Scaffold:** clone the Decky template, rename, set `flags: ["root"]`, build an empty panel.
+2. ✅ **Protocol module + unit tests:** `color.py`, `oxp_hid_v2.py` packet builders, discovery.
+3. **Backend:** settings persistence, `LedDevice`, coalesced apply, callables.
 4. **Frontend:** mode dropdown, dynamic controls, debounce, colour swatch, not-found state.
-5. **Lifecycle:** resume hook.
-6. **On-device testing** (checklist in §5), then write the README with install steps.
+5. **On-device testing** (checklist in §5), then write the README with install steps.
+
+(The old "lifecycle: resume hook" milestone was dropped because the firmware
+keeps the LED state; see §2.4.)
 
 ---
 
@@ -228,7 +246,8 @@ for the protocol, so the plugin doesn't detect or handle HHD at all.
 
 | Risk | Mitigation |
 |---|---|
-| Rumble stops working after LED writes (HHD comment in `hid_v2.py`) | Test explicitly. Only write on real changes and at startup/resume. |
-| Firmware needs the 4 s settle time after boot/resume | Use the same 4 s delay as HHD. Make it a constant that's easy to tune. |
+| Rumble stops working after LED writes (HHD comment in `hid_v2.py`) | Passed with hand-written packets. Check again with the plugin. Only write on real user changes. |
+| The firmware keeps LED state across reboot, so it probably saves it to flash. Constant slider drags could mean many writes | Debounce in the UI plus "latest wins" in the backend. If needed, write only when the slider is released. |
+| InputPlumber also touches the LEDs | Ignored for now (§4). |
 | Other AOKZOE firmware revisions behave differently | Out of scope (single device). The protocol is isolated in one module. |
 | Decky API changes | Pin `@decky/ui` / `@decky/api` versions from the template. |

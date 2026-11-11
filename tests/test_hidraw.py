@@ -16,6 +16,17 @@ KEYBOARD_DESC = bytes.fromhex("05 01 09 06 A1 01 05 07 19 E0 29 E7 81 02 C0")
 # Vendor page 0xFF00 usage 0x01 (the A1X's *other* vendor interface family).
 OTHER_VENDOR_DESC = bytes.fromhex("06 00 FF 09 01 A1 01 09 01 81 02 C0")
 
+# First 32 bytes of the real descriptors of the two 1A2C:B001 hidraw nodes on
+# an AOKZOE A1X (captured 2026-11-11). Truncated, as `od | head -2` printed.
+A1X_LED_DESC = bytes.fromhex(
+    "06 01 ff 09 01 a1 01 09 02 75 08 95 40 15 00 26"
+    "ff 00 81 02 09 03 75 08 95 40 15 00 26 ff 00 91"
+)
+A1X_MOUSE_DESC = bytes.fromhex(
+    "05 01 09 02 a1 01 05 09 19 01 29 08 15 00 25 01"
+    "95 08 75 01 81 02 05 01 09 01 a1 00 09 30 09 31"
+)
+
 
 def uevent(vid: int, pid: int) -> str:
     return (
@@ -77,6 +88,17 @@ class FindTest(unittest.TestCase):
         self.add("hidraw4", 0x045E, 0x028E, VENDOR_DESC)
         self.assertEqual(
             oxp_hid_v2.find_device(sysfs_root=self.root), "/dev/hidraw3"
+        )
+
+    def test_real_a1x_descriptors(self):
+        self.assertEqual(top_level_usages(A1X_LED_DESC), [(0xFF01, 0x01)])
+        self.assertEqual(top_level_usages(A1X_MOUSE_DESC), [(0x01, 0x02)])
+        # Same layout as the device: LED interface on hidraw0, mouse on hidraw2.
+        self.add("hidraw0", 0x1A2C, 0xB001, A1X_LED_DESC)
+        self.add("hidraw1", 0x0001, 0x0001, KEYBOARD_DESC)
+        self.add("hidraw2", 0x1A2C, 0xB001, A1X_MOUSE_DESC)
+        self.assertEqual(
+            oxp_hid_v2.find_device(sysfs_root=self.root), "/dev/hidraw0"
         )
 
     def test_not_found(self):

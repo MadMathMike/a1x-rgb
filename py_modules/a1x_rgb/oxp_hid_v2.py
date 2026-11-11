@@ -19,9 +19,10 @@ USAGE = 0x0001
 PACKET_SIZE = 64
 LED_CID = 0x07
 
-# Timing used by HHD.
-WRITE_DELAY = 0.05  # seconds between packets
-INIT_DELAY = 4.0  # seconds to wait after the device appears
+# Seconds between packets, as in HHD. (HHD also waits 4 s after opening the
+# device; we don't need that because we never write at startup: the A1X
+# firmware keeps the LED state across suspend and reboot.)
+WRITE_DELAY = 0.05
 
 Level = Literal["low", "medium", "high"]
 
