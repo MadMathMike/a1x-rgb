@@ -1,0 +1,11 @@
+{
+  "name": "A1X RGB",
+  "author": "Michael Peterson",
+  "flags": ["root"],
+  "api_version": 1,
+  "publish": {
+    "tags": ["root", "rgb", "aokzoe"],
+    "description": "Control the LEDs on the AOKZOE A1X.",
+    "image": ""
+  }
+}
