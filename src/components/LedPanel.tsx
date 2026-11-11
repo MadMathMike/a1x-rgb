@@ -1,8 +1,13 @@
-import { DropdownItem, PanelSectionRow, SliderField } from "@decky/ui";
+import { PanelSectionRow, SliderField } from "@decky/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Control, Description, Settings, setSettings } from "../backend";
-import { hsbToRgb } from "../color";
+import { OptionButtons } from "./OptionButtons";
+
+// Choice controls with up to this many options become a notched slider;
+// larger ones become a button grid with GRID_COLUMNS columns.
+const MAX_NOTCHES = 4;
+const GRID_COLUMNS = 2;
 
 // Slider changes are sent at most this often while dragging; the final value
 // is always sent. The backend also drops superseded writes.
@@ -62,16 +67,16 @@ export function LedPanel({ description, initial }: Props) {
   );
 
   const mode = description.modes.find((m) => m.key === values.mode) ?? description.modes[0];
-  const hasColor = ["hue", "saturation", "brightness"].every((k) => mode.controls.includes(k));
 
   return (
     <>
       <PanelSectionRow>
-        <DropdownItem
+        <OptionButtons
           label="Mode"
-          rgOptions={description.modes.map((m) => ({ data: m.key, label: m.label }))}
-          selectedOption={mode.key}
-          onChange={(o) => update({ mode: o.data }, true)}
+          options={description.modes}
+          selected={mode.key}
+          columns={description.modes.length}
+          onSelect={(key) => update({ mode: key }, true)}
         />
       </PanelSectionRow>
 
@@ -84,18 +89,6 @@ export function LedPanel({ description, initial }: Props) {
           />
         </PanelSectionRow>
       ))}
-
-      {hasColor && (
-        <PanelSectionRow>
-          <ColorSwatch
-            rgb={hsbToRgb(
-              Number(values.hue),
-              Number(values.saturation),
-              Number(values.brightness),
-            )}
-          />
-        </PanelSectionRow>
-      )}
 
       {error && (
         <PanelSectionRow>
@@ -130,26 +123,34 @@ function ControlField({
       />
     );
   }
+  if (control.options.length <= MAX_NOTCHES) {
+    // Few options: a notched slider, e.g. Low / Medium / High.
+    const index = Math.max(
+      0,
+      control.options.findIndex((o) => o.key === value),
+    );
+    return (
+      <SliderField
+        label={control.label}
+        value={index}
+        min={0}
+        max={control.options.length - 1}
+        step={1}
+        notchCount={control.options.length}
+        notchLabels={control.options.map((o, i) => ({ notchIndex: i, label: o.label, value: i }))}
+        notchTicksVisible
+        onChange={(i) => onChange(control.options[i].key, false)}
+      />
+    );
+  }
+  // Many options: an inline grid of buttons.
   return (
-    <DropdownItem
+    <OptionButtons
       label={control.label}
-      rgOptions={control.options.map((o) => ({ data: o.key, label: o.label }))}
-      selectedOption={value}
-      onChange={(o) => onChange(o.data, true)}
-    />
-  );
-}
-
-// A plain flat rectangle: the A1X's LEDs aren't rings, so no ring imagery.
-function ColorSwatch({ rgb: [r, g, b] }: { rgb: [number, number, number] }) {
-  return (
-    <div
-      style={{
-        height: "24px",
-        borderRadius: "4px",
-        background: `rgb(${r}, ${g}, ${b})`,
-        border: "1px solid rgba(255, 255, 255, 0.2)",
-      }}
+      options={control.options}
+      selected={String(value)}
+      columns={GRID_COLUMNS}
+      onSelect={(key) => onChange(key, true)}
     />
   );
 }

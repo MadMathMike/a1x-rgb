@@ -129,9 +129,9 @@ a1x-rgb/
 ├── src/
 │   ├── index.tsx          # definePlugin
 │   ├── backend.ts         # typed callable() wrappers
-│   ├── color.ts           # hsbToRgb for the swatch (same as color.py)
 │   └── components/
-│       └── LedPanel.tsx   # mode dropdown + dynamic controls
+│       ├── LedPanel.tsx   # mode buttons + dynamic controls
+│       └── OptionButtons.tsx  # inline button row/grid picker
 ├── tests/
 │   ├── _util.py           # loads reference functions from a local HHD checkout
 │   ├── test_packets.py    # byte-exact packet tests
@@ -183,17 +183,20 @@ Start from the official `SteamDeckHomebrew/decky-plugin-template` so the build,
 ### 3.2 Frontend (TypeScript / React)
 - `definePlugin` with a `PanelSection` titled "A1X RGB" and a lightbulb icon.
 - **No ring imagery.** The A1X's LEDs aren't joystick rings, so the UI uses no
-  ring-shaped icons, graphics or previews. The only visual is a plain flat
-  colour swatch (rectangle) for Solid mode.
+  ring-shaped icons, graphics or previews. There's no colour preview either:
+  the LEDs themselves show the result.
 - Controls (from `@decky/ui`), built from `description` from `get_state()`.
-  Slider controls become `SliderField`s and choice controls become `DropdownItem`s:
-  - `DropdownItem` **Mode**: Off / Solid / AOKZOE
-  - Solid → `SliderField` Hue (step 5), Saturation (step 10), Brightness (step 10),
-    plus a colour-swatch preview (shown for any mode with hue/saturation/brightness)
-  - AOKZOE → `DropdownItem` Style (10 presets), `DropdownItem` Brightness (Low/Medium/High)
+  **No `DropdownItem`s:** their list opens as a context menu that hides the
+  Quick Access panel, which felt jarring on the device. Instead:
+  - **Mode** → row of buttons (`OptionButtons`), selected one highlighted: Off / Solid / AOKZOE
+  - Slider controls → `SliderField`. Solid: Hue (step 5), Saturation (step 10), Brightness (step 10)
+  - Choice controls with ≤ 4 options → notched `SliderField` with labels.
+    AOKZOE: Brightness (Low / Medium / High)
+  - Choice controls with more options → 2-column button grid (`OptionButtons`).
+    AOKZOE: Style (10 presets)
 - Every change updates the panel straight away. Only the changed values are
   sent to `set_settings`:
-  - Dropdowns send immediately.
+  - Buttons send immediately.
   - Sliders send **at most every 150 ms** while dragging, and the final value
     is always sent.
   - Anything still unsent is sent when the panel closes.
@@ -242,7 +245,7 @@ With the plugin installed:
 1. ✅ **Scaffold:** clone the Decky template, rename, set `flags: ["root"]`, build an empty panel.
 2. ✅ **Protocol module + unit tests:** `color.py`, `oxp_hid_v2.py` packet builders, discovery.
 3. ✅ **Backend:** settings persistence, `LedDevice`, coalesced apply, callables.
-4. ✅ **Frontend:** mode dropdown, dynamic controls, throttled sends, colour swatch, not-found state.
+4. ✅ **Frontend:** mode picker, dynamic controls, throttled sends, not-found state. (After on-device testing, the colour swatch was removed and the dropdowns were replaced with inline buttons and notched sliders.)
 5. **On-device testing** (checklist in §5), then write the README with install steps.
 
 (The old "lifecycle: resume hook" milestone was dropped because the firmware

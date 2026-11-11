@@ -1,6 +1,6 @@
 {
   "name": "a1x-rgb",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Decky Loader plugin to control the LEDs on the AOKZOE A1X",
   "type": "module",
   "scripts": {
