@@ -129,6 +129,7 @@ a1x-rgb/
 ├── src/
 │   ├── index.tsx          # definePlugin
 │   ├── backend.ts         # typed callable() wrappers
+│   ├── color.ts           # hsbToRgb for the swatch (same as color.py)
 │   └── components/
 │       └── LedPanel.tsx   # mode dropdown + dynamic controls
 ├── tests/
@@ -184,14 +185,19 @@ Start from the official `SteamDeckHomebrew/decky-plugin-template` so the build,
 - **No ring imagery.** The A1X's LEDs aren't joystick rings, so the UI uses no
   ring-shaped icons, graphics or previews. The only visual is a plain flat
   colour swatch (rectangle) for Solid mode.
-- Controls (from `@decky/ui`), driven by `modes` from `get_state()`:
+- Controls (from `@decky/ui`), built from `description` from `get_state()`.
+  Slider controls become `SliderField`s and choice controls become `DropdownItem`s:
   - `DropdownItem` **Mode**: Off / Solid / AOKZOE
   - Solid → `SliderField` Hue (step 5), Saturation (step 10), Brightness (step 10),
-    plus a small colour-swatch preview
-  - AOKZOE → `DropdownItem` Style (10 presets), `DropdownItem` or notched
-    `SliderField` Brightness (Low/Medium/High)
-- Every change updates local state straight away, then calls `set_settings`
-  **debounced ~150 ms**.
+    plus a colour-swatch preview (shown for any mode with hue/saturation/brightness)
+  - AOKZOE → `DropdownItem` Style (10 presets), `DropdownItem` Brightness (Low/Medium/High)
+- Every change updates the panel straight away. Only the changed values are
+  sent to `set_settings`:
+  - Dropdowns send immediately.
+  - Sliders send **at most every 150 ms** while dragging, and the final value
+    is always sent.
+  - Anything still unsent is sent when the panel closes.
+  - Errors from the backend are shown under the controls.
 - If `device` is null: show "AOKZOE A1X LED controller not found" and hide the controls.
 - No suspend/resume hooks (unlike HueSync), because the firmware keeps the LED state.
 
@@ -236,7 +242,7 @@ With the plugin installed:
 1. ✅ **Scaffold:** clone the Decky template, rename, set `flags: ["root"]`, build an empty panel.
 2. ✅ **Protocol module + unit tests:** `color.py`, `oxp_hid_v2.py` packet builders, discovery.
 3. ✅ **Backend:** settings persistence, `LedDevice`, coalesced apply, callables.
-4. **Frontend:** mode dropdown, dynamic controls, debounce, colour swatch, not-found state.
+4. ✅ **Frontend:** mode dropdown, dynamic controls, throttled sends, colour swatch, not-found state.
 5. **On-device testing** (checklist in §5), then write the README with install steps.
 
 (The old "lifecycle: resume hook" milestone was dropped because the firmware

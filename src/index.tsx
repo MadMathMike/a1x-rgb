@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { FaLightbulb } from "react-icons/fa";
 
 import { getState, PluginState } from "./backend";
+import { LedPanel } from "./components/LedPanel";
 
 const small = { fontSize: "0.8em", opacity: 0.6 };
 
@@ -17,34 +18,24 @@ function Content() {
       .catch((e) => setError(String(e)));
   }, []);
 
-  let status: string;
-  if (error) status = `Backend error: ${error}`;
-  else if (!state) status = "Loading…";
-  else if (!state.device) status = "AOKZOE A1X LED controller not found";
-  else status = state.device.name;
-
-  // Temporary: the mode and its controls arrive in milestone 4.
-  const mode = state?.settings
-    ? state.description?.modes.find((m) => m.key === state.settings!.mode)?.label
-    : undefined;
+  let body;
+  if (error) body = <div>Backend error: {error}</div>;
+  else if (!state) body = <div>Loading…</div>;
+  else if (!state.device || !state.description || !state.settings)
+    body = <div>AOKZOE A1X LED controller not found</div>;
 
   return (
-    <PanelSection title="LEDs">
-      <PanelSectionRow>
-        <div>{status}</div>
-      </PanelSectionRow>
-      {state?.device && (
-        <PanelSectionRow>
-          <div style={small}>
-            {state.device.path}
-            {mode && ` · saved mode: ${mode}`}
-          </div>
-        </PanelSectionRow>
+    <PanelSection title={state?.device?.name ?? "LEDs"}>
+      {body ? (
+        <PanelSectionRow>{body}</PanelSectionRow>
+      ) : (
+        <LedPanel description={state!.description!} initial={state!.settings!} />
       )}
       {state && (
         <PanelSectionRow>
           <div style={small}>
-            v{state.version} · Python {state.python}
+            v{state.version}
+            {state.device && ` · ${state.device.path}`}
           </div>
         </PanelSectionRow>
       )}

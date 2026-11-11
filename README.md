@@ -3,8 +3,9 @@
 A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin for
 controlling the LEDs on the AOKZOE A1X. See [PLAN.md](PLAN.md) for the design.
 
-**Status:** backend done (milestone 3). The panel shows the detected device;
-the mode controls arrive in milestone 4.
+**Status:** feature-complete (milestone 4). Modes: Off, Solid (hue,
+saturation, brightness) and AOKZOE (10 firmware effects, 3 brightness
+levels). On-device testing is next.
 
 ## Package
 
