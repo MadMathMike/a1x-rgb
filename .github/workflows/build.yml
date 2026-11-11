@@ -25,6 +25,10 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+          # v5 enables caching automatically when package.json has a
+          # "packageManager" field, which needs pnpm on PATH before corepack
+          # has installed it. The build is quick, so skip the cache.
+          package-manager-cache: false
 
       # Uses the pnpm version pinned in package.json ("packageManager").
       - run: corepack enable
